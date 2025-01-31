@@ -220,10 +220,13 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
                         <div>
                           <span className="text-gray-600">Last Update:</span> {marker.lastUpdate}
                         </div>
-                        <div>
-                          <span className="text-gray-600">Temperature:</span>{' '}
-                          {marker.temperature ? marker.temperature.toFixed(2) : 'N/A'}°F
-                        </div>
+                        {(marker.registrationToken === TagTypes.TEMPERATURE || 
+                          marker.registrationToken === TagTypes.SUPERTAG) && (
+                          <div>
+                            <span className="text-gray-600">Temperature:</span>{' '}
+                            {marker.temperature ? `${marker.temperature.toFixed(2)}°F` : ''}
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <span className="text-gray-600">Battery:</span>
                           <Battery className={`w-4 h-4 ${getBatteryColor(marker.battery)}`} />
@@ -300,11 +303,14 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
                         <Battery className={`w-4 h-4 ${getBatteryColor(marker.battery)}`} />
                         <span className="text-sm text-gray-600">{getBatteryDisplay(marker.battery)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {marker.temperature ? marker.temperature.toFixed(2) : 'N/A'}°F
-                        </span>
-                      </div>
+                      {(marker.registrationToken === TagTypes.TEMPERATURE || 
+                        marker.registrationToken === TagTypes.SUPERTAG) && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">
+                            {marker.temperature ? `${marker.temperature.toFixed(2)}°F` : ''}
+                          </span>
+                        </div>
+                      )}
                       {marker.registrationToken === TagTypes.SUPERTAG ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">
@@ -352,10 +358,13 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
               <div>
                 <span className="text-gray-600">Last Update:</span> {selectedMarker.lastUpdate}
               </div>
-              <div>
-                <span className="text-gray-600">Temperature:</span>{' '}
-                {selectedMarker.temperature ? selectedMarker.temperature.toFixed(2) : 'N/A'}°F
-              </div>
+              {(selectedMarker.registrationToken === TagTypes.TEMPERATURE || 
+                selectedMarker.registrationToken === TagTypes.SUPERTAG) && (
+                <div>
+                  <span className="text-gray-600">Temperature:</span>{' '}
+                  {selectedMarker.temperature ? `${selectedMarker.temperature.toFixed(2)}°F` : ''}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <span className="text-gray-600">Battery:</span>
                 <Battery className={`w-4 h-4 ${getBatteryColor(selectedMarker.battery)}`} />

@@ -11,7 +11,7 @@ import { DoorSensorStatus } from './components/DoorSensorStatus';
 
 const DEFAULT_POSITION: LatLngTuple = [36.1428, -78.8846];
 
-type SortOption = 'lastSeen' | 'lowBattery' | 'status' | 'name';
+type SortOption = 'lastSeen' | 'lowBattery' | 'name';
 type AssetViewType = 'all' | 'supertags' | 'sensors';
 
 interface ProcessedMarker {
@@ -162,16 +162,6 @@ function App() {
           if (b.battery.level !== null) return 1;
           
           return 0;
-        }
-        case 'status': {
-          const aTime = a.lastUpdate ? new Date(a.lastUpdate).getTime() : 0;
-          const bTime = b.lastUpdate ? new Date(b.lastUpdate).getTime() : 0;
-          const aActive = aTime > Date.now() - 24 * 60 * 60 * 1000;
-          const bActive = bTime > Date.now() - 24 * 60 * 60 * 1000;
-          if (aActive === bActive) {
-            return bTime - aTime;
-          }
-          return bActive ? 1 : -1;
         }
         case 'name':
         default: {
@@ -411,18 +401,6 @@ function App() {
                         </button>
                         <button
                           onClick={() => {
-                            setSortOption('status');
-                            setShowSortDropdown(false);
-                          }}
-                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ${
-                            sortOption === 'status' ? 'text-[#87B812]' : 'text-gray-700'
-                          }`}
-                        >
-                          Status
-                          {sortOption === 'status' && <AlertTriangle className="w-4 h-4" />}
-                        </button>
-                        <button
-                          onClick={() => {
                             setSortOption('name');
                             setShowSortDropdown(false);
                           }}
@@ -532,18 +510,21 @@ function App() {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Thermometer className={`w-4 h-4 ${
-                            typeof asset.temperature === 'number' && asset.temperature >= 80 ? 'text-red-500' :
-                            typeof asset.temperature === 'number' && asset.temperature >= 70 ? 'text-orange-500' : 
-                            'text-[#004780]'
-                          }`} />
-                          <span className="text-sm text-gray-600">
-                            {typeof asset.temperature === 'number' 
-                              ? `${asset.temperature.toFixed(2)}°F`
-                              : 'N/A'}
-                          </span>
-                        </div>
+                        {(asset.registrationToken === TagTypes.TEMPERATURE || 
+                          asset.registrationToken === TagTypes.SUPERTAG) && (
+                          <div className="flex items-center gap-1.5">
+                            <Thermometer className={`w-4 h-4 ${
+                              typeof asset.temperature === 'number' && asset.temperature >= 80 ? 'text-red-500' :
+                              typeof asset.temperature === 'number' && asset.temperature >= 70 ? 'text-orange-500' : 
+                              'text-[#004780]'
+                            }`} />
+                            <span className="text-sm text-gray-600">
+                              {typeof asset.temperature === 'number' 
+                                ? `${asset.temperature.toFixed(2)}°F`
+                                : ''}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {asset.registrationToken === TagTypes.DOOR_SENSOR && (
@@ -660,7 +641,7 @@ function App() {
                             <span className="text-sm text-gray-600">Greater than 14 days</span>
                             <span className="font-semibold text-red-500">{assetStats.notSeenCounts.fourteenDays}</span>
                           </div>
-                          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                          <div className="flex justify-between items-center p-2 bg -gray-50 rounded">
                             <span className="text-sm text-gray-600">Greater than 30 days</span>
                             <span className="font-semibold text-red-600">{assetStats.notSeenCounts.thirtyDays}</span>
                           </div>
