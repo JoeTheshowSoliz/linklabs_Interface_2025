@@ -28,8 +28,17 @@ export interface Tag {
   nodeAddress: string;
   sourceSupertagId: string | null;
   batteryVoltage?: string | null;
-  batteryStatus?: string | null;
+  doorSensorAlarmStatus?: string | null;
+  batteryStatus: number | string;
+  batteryCapacity_mAh: number | string;
+  batteryConsumed_mAh?: number | string | null;
+  batteryUsage_uAh?: number | string | null;
   alerts?: string[];
+}
+
+export interface BatteryInfo {
+  status: 'OK' | 'Low';
+  level: number | null;
 }
 
 export interface BLEAsset {
@@ -39,16 +48,18 @@ export interface BLEAsset {
   connectionDate: string;
   leashedTime: string;
   lastUpdate: string;
-  battery: number;
+  battery: BatteryInfo;
 }
 
+// Define tag type constants
 export const TagTypes = {
   SUPERTAG: 'D29B3BE8F2CC9A1A7051',
   DOOR_SENSOR: '61697266696E64657200',
   TEMPERATURE: '150285A4E29B7856C7CC'
 } as const;
 
-export function getTagType(registrationToken: string) {
+// Function to get the type of tag based on registration token
+export function getTagType(registrationToken: string): string {
   switch (registrationToken) {
     case TagTypes.SUPERTAG:
       return 'SuperTag';
@@ -103,10 +114,9 @@ export async function login({ username, password }: LoginCredentials): Promise<b
 export async function fetchOrganizations(): Promise<Organization[]> {
   try {
     const response = await api.get('/networkAsset/airfinder/organizations');
-    console.log('Raw organizations response:', response.data); // Debug log
     return response.data.map((org: any) => ({
       id: org.id || '',
-      name: org.value || org.name || 'Unnamed Organization' // Use value field first, then fall back to name
+      name: org.value || org.name || 'Unnamed Organization'
     }));
   } catch (error) {
     console.error('Failed to fetch organizations:', error);
@@ -117,10 +127,9 @@ export async function fetchOrganizations(): Promise<Organization[]> {
 export async function fetchSites(organizationId: string): Promise<Site[]> {
   try {
     const response = await api.get(`/networkAsset/airfinder/organization/${organizationId}/sites`);
-    console.log('Raw sites response:', response.data); // Debug log
     return response.data.map((site: any) => ({
       id: site.id || '',
-      name: site.value || site.name || site.siteName || 'Unnamed Site' // Try all possible name fields
+      name: site.value || site.name || site.siteName || 'Unnamed Site'
     }));
   } catch (error) {
     console.error('Failed to fetch sites:', error);
@@ -155,13 +164,42 @@ export function logout(): void {
   localStorage.removeItem('authToken');
 }
 
-export function calculateBatteryPercentage(tag: Tag): number {
-  if (!tag.batteryVoltage || !tag.batteryStatus) return 0;
+export function getBatteryInfo(tag: Tag): BatteryInfo {
+  // Convert batteryStatus to number for comparison
+  const batteryStatusNum = Number(tag.batteryStatus);
   
-  const voltage = parseFloat(tag.batteryVoltage);
-  // Basic battery percentage calculation - can be refined based on actual battery specs
-  const minVoltage = 2.5;
-  const maxVoltage = 4.2;
-  const percentage = ((voltage - minVoltage) / (maxVoltage - minVoltage)) * 100;
-  return Math.round(Math.max(0, Math.min(100, percentage)));
+  // If batteryStatus is 0 or conversion failed, return Low status with no level
+  if (batteryStatusNum === 0 || isNaN(batteryStatusNum)) {
+    return { status: 'Low', level: null };
+  }
+
+  const status = batteryStatusNum === 1 ? 'OK' : 'Low';
+  let level: number | null = null;
+
+  // Convert batteryCapacity_mAh to number for comparison
+  const batteryCapacity = Number(tag.batteryCapacity_mAh);
+  
+  // Only calculate battery level if batteryCapacity_mAh is not 470.0 or 470 and conversion succeeded
+  if (!isNaN(batteryCapacity) && batteryCapacity !== 470 && batteryCapacity !== 470.0) {
+    if (tag.batteryConsumed_mAh != null) {
+      // Convert and calculate using batteryConsumed_mAh
+      const consumed = Number(tag.batteryConsumed_mAh);
+      if (!isNaN(consumed)) {
+        level = ((batteryCapacity * 0.75 - consumed) / (batteryCapacity * 0.75)) * 100;
+      }
+    } else if (tag.batteryUsage_uAh != null) {
+      // Convert and calculate using batteryUsage_uAh
+      const usage = Number(tag.batteryUsage_uAh);
+      if (!isNaN(usage)) {
+        level = ((batteryCapacity * 0.75 - usage / 1000) / (batteryCapacity * 0.75)) * 100;
+      }
+    }
+
+    // Ensure level is between 0 and 100
+    if (level !== null) {
+      level = Math.max(0, Math.min(100, Math.round(level)));
+    }
+  }
+
+  return { status, level };
 }

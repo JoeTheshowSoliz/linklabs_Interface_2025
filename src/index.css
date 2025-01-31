@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom styles for the layer control */
+.leaflet-control-layers {
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.leaflet-control-layers-base label {
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.leaflet-control-layers-base label:last-child {
+  border-bottom: none;
+}
+
+.leaflet-control-layers-base input[type="radio"] {
+  margin-right: 8px !important;
+}
+
+.leaflet-control-layers-toggle {
+  width: 36px !important;
+  height: 36px !important;
+  background-size: 20px 20px !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 0 !important;
+  background: white !important;
+  min-width: 160px !important;
+}
