@@ -111,8 +111,6 @@ function MapUpdater({ center, zoom }: { center: LatLngTuple; zoom: number }) {
 }
 
 export function Map({ center, markers, zoom = 13 }: MapProps) {
-  const [showClusterModal, setShowClusterModal] = useState(false);
-  const [clusterMarkers, setClusterMarkers] = useState<MapMarker[]>([]);
   const [mapReady, setMapReady] = useState(false);
 
   const validMarkers = markers.filter(marker => isValidPosition(marker.position));
@@ -137,12 +135,6 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
              battery.level <= 50 ? 'text-yellow-500' : 'text-[#87B812]';
     }
     return 'text-[#87B812]';
-  };
-
-  const handleClusterClick = (cluster: any) => {
-    const markers = cluster.getAllChildMarkers().map((marker: any) => marker.options.marker);
-    setClusterMarkers(markers);
-    setShowClusterModal(true);
   };
 
   return (
@@ -188,11 +180,6 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
               maxClusterRadius={60}
               spiderfyOnMaxZoom={true}
               showCoverageOnHover={false}
-              eventHandlers={{
-                clusterclick: (e) => {
-                  handleClusterClick(e.layer);
-                }
-              }}
             >
               {validMarkers.map((marker, index) => (
                 <Marker 
@@ -243,73 +230,6 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
           </>
         )}
       </MapContainer>
-
-      {/* Cluster Modal */}
-      {showClusterModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Assets in this Area ({clusterMarkers.length})</h2>
-              <button 
-                onClick={() => setShowClusterModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {clusterMarkers.map((marker, index) => (
-                <div 
-                  key={index}
-                  className="bg-white border border-gray-200 rounded-lg p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-lg">{marker.name}</h3>
-                      <span className="text-sm px-2 py-1 bg-gray-100 rounded-full">
-                        {marker.type}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4 mt-3">
-                    <div className="flex items-center gap-2">
-                      <Battery className={`w-4 h-4 ${getBatteryColor(marker.battery)}`} />
-                      <span className="text-sm text-gray-600">{getBatteryDisplay(marker.battery)}</span>
-                    </div>
-                    {(marker.registrationToken === TagTypes.TEMPERATURE || 
-                      marker.registrationToken === TagTypes.SUPERTAG) && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {marker.temperature ? `${marker.temperature.toFixed(2)}°F` : ''}
-                        </span>
-                      </div>
-                    )}
-                    {marker.registrationToken === TagTypes.SUPERTAG ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          {marker.bleAssets.length} BLE Assets
-                        </span>
-                      </div>
-                    ) : marker.leashedToSuperTag ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          Connected to: {marker.leashedToSuperTag}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                  
-                  <div className="mt-2 text-sm text-gray-500">
-                    Last Update: {marker.lastUpdate}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
