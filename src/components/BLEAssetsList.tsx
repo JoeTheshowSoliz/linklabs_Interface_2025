@@ -132,7 +132,9 @@ export function BLEAssetsList({ assets, selectedAsset }: BLEAssetsListProps) {
     );
   }
 
-  const bleAssetsToShow = selectedAsset.bleAssets || [];
+  const bleAssetsToShow = [...(selectedAsset.bleAssets || [])].sort((a, b) => {
+    return new Date(b.lastEventTime).getTime() - new Date(a.lastEventTime).getTime();
+  });
   const connectedCount = bleAssetsToShow.filter(asset => isWithin24Hours(asset.lastEventTime)).length;
 
   return (
