@@ -1,5 +1,6 @@
 import React from 'react';
 import { Wifi, WifiOff, Battery, Clock, Link, Box } from 'lucide-react';
+import { getBatteryInfo } from '../lib/api';
 
 interface BLEAsset {
   name: string;
@@ -7,6 +8,10 @@ interface BLEAsset {
   lastEventTime: string;
   batteryVoltage: string;
   lowVoltageFlag: boolean;
+  batteryStatus: number | string;
+  batteryCapacity_mAh: number | string;
+  batteryConsumed_mAh?: number | string | null;
+  batteryUsage_uAh?: number | string | null;
 }
 
 interface Asset {
@@ -25,15 +30,6 @@ interface BLEAssetsListProps {
   assets: Asset[];
   selectedAsset: Asset | null;
 }
-
-// Helper function to calculate battery percentage
-const calculateBatteryPercentage = (voltage: string): number => {
-  const voltageNum = parseFloat(voltage);
-  const minVoltage = 2.5;
-  const maxVoltage = 4.2;
-  const percentage = ((voltageNum - minVoltage) / (maxVoltage - minVoltage)) * 100;
-  return Math.round(Math.max(0, Math.min(100, percentage)));
-};
 
 // Helper function to check if a date is within the last 24 hours
 const isWithin24Hours = (dateString: string): boolean => {
@@ -149,11 +145,7 @@ export function BLEAssetsList({ assets, selectedAsset }: BLEAssetsListProps) {
         <div className="grid gap-4">
           {bleAssetsToShow.map((asset, index) => {
             const isConnected = isWithin24Hours(asset.lastEventTime);
-            const batteryPercentage = calculateBatteryPercentage(asset.batteryVoltage);
-            const batteryInfo = {
-              status: asset.lowVoltageFlag ? 'Low' as const : 'OK' as const,
-              level: batteryPercentage
-            };
+            const batteryInfo = getBatteryInfo(asset);
 
             return (
               <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
