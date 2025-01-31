@@ -3,17 +3,37 @@ import { LatLngTuple } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Battery, Wifi, WifiOff, Tag, X, ChevronRight } from 'lucide-react';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import { TagTypes } from '../lib/api';
+
+// Fix Leaflet default icon path issue
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 // Create custom colored marker icon
 const CustomIcon = L.divIcon({
   className: 'custom-marker',
   html: `<svg width="25" height="41" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <path d="M50 0C29.86 0 13.5 16.36 13.5 36.5c0 28.875 36.5 63.5 36.5 63.5s36.5-34.625 36.5-63.5C86.5 16.36 70.14 0 50 0z" fill="#87B812"/>
+    <circle cx="50" cy="36.5" r="16.5" fill="white"/>
+  </svg>`,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+// Selected marker icon with different color
+const SelectedIcon = L.divIcon({
+  className: 'custom-marker',
+  html: `<svg width="25" height="41" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 0C29.86 0 13.5 16.36 13.5 36.5c0 28.875 36.5 63.5 36.5 63.5s36.5-34.625 36.5-63.5C86.5 16.36 70.14 0 50 0z" fill="#004780"/>
     <circle cx="50" cy="36.5" r="16.5" fill="white"/>
   </svg>`,
   iconSize: [25, 41],
@@ -64,12 +84,14 @@ interface MapMarker {
   bleAssets: any[];
   registrationToken: string;
   leashedToSuperTag?: string | null;
+  macAddress: string;
 }
 
 interface MapProps {
   center: LatLngTuple;
   markers: MapMarker[];
   zoom?: number;
+  selectedAsset?: MapMarker | null;
 }
 
 const formatCoordinate = (coord: number | undefined | null): string => {
@@ -90,36 +112,65 @@ const isValidPosition = (position: LatLngTuple): boolean => {
          position[1] >= -180 && position[1] <= 180;
 };
 
-function MapUpdater({ center, zoom }: { center: LatLngTuple; zoom: number }) {
+// Component to handle map view updates
+function MapUpdater({ center, zoom, selectedAsset }: { 
+  center: LatLngTuple; 
+  zoom: number;
+  selectedAsset: MapMarker | null | undefined;
+}) {
   const map = useMap();
-  
+  const lastUpdate = useRef({ center, zoom, selectedAsset: null as MapMarker | null | undefined });
+
   useEffect(() => {
-    if (map && isValidPosition(center)) {
-      try {
+    if (!map) return;
+
+    const shouldUpdate = 
+      selectedAsset !== lastUpdate.current.selectedAsset ||
+      center !== lastUpdate.current.center ||
+      zoom !== lastUpdate.current.zoom;
+
+    if (shouldUpdate) {
+      if (selectedAsset && isValidPosition(selectedAsset.position)) {
+        map.setView(selectedAsset.position, 15, {
+          animate: true,
+          duration: 1
+        });
+      } else if (isValidPosition(center)) {
         map.setView(center, zoom, {
           animate: true,
-          duration: 1.5,
-          easeLinearity: 0.25
+          duration: 1
         });
-      } catch (error) {
-        console.error('Error updating map view:', error);
       }
+
+      lastUpdate.current = { center, zoom, selectedAsset };
     }
-  }, [map, center, zoom]);
+  }, [map, center, zoom, selectedAsset]);
 
   return null;
 }
 
-export function Map({ center, markers, zoom = 13 }: MapProps) {
+export function Map({ center, markers, zoom = 13, selectedAsset }: MapProps) {
   const [mapReady, setMapReady] = useState(false);
+  const mapRef = useRef<L.Map | null>(null);
+  const markerRefs = useRef<{ [key: string]: L.Marker }>({});
 
   const validMarkers = markers.filter(marker => isValidPosition(marker.position));
   const defaultCenter: LatLngTuple = [0, 0];
   const validCenter = isValidPosition(center) ? center : defaultCenter;
 
-  const handleMapReady = useCallback(() => {
+  const handleMapReady = useCallback((map: L.Map) => {
+    mapRef.current = map;
     setMapReady(true);
   }, []);
+
+  useEffect(() => {
+    if (selectedAsset && mapRef.current && isValidPosition(selectedAsset.position)) {
+      const marker = markerRefs.current[selectedAsset.macAddress];
+      if (marker) {
+        marker.openPopup();
+      }
+    }
+  }, [selectedAsset]);
 
   const getBatteryDisplay = (battery: { status: 'OK' | 'Low'; level: number | null }) => {
     if (!battery) return 'Unknown';
@@ -143,11 +194,11 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
         center={validCenter}
         zoom={zoom} 
         style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
-        whenReady={handleMapReady}
+        whenReady={(map) => handleMapReady(map.target)}
       >
         {mapReady && (
           <>
-            <MapUpdater center={validCenter} zoom={zoom} />
+            <MapUpdater center={validCenter} zoom={zoom} selectedAsset={selectedAsset} />
             
             <LayersControl position="topright">
               <LayersControl.BaseLayer checked name="Street">
@@ -183,10 +234,14 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
             >
               {validMarkers.map((marker, index) => (
                 <Marker 
-                  key={index} 
+                  key={`${marker.macAddress}-${index}`}
                   position={marker.position}
-                  icon={CustomIcon}
-                  marker={marker}
+                  icon={selectedAsset?.macAddress === marker.macAddress ? SelectedIcon : CustomIcon}
+                  ref={(ref) => {
+                    if (ref) {
+                      markerRefs.current[marker.macAddress] = ref;
+                    }
+                  }}
                 >
                   <Popup>
                     <div className="p-2 min-w-[250px]">
