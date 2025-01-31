@@ -111,8 +111,6 @@ function MapUpdater({ center, zoom }: { center: LatLngTuple; zoom: number }) {
 }
 
 export function Map({ center, markers, zoom = 13 }: MapProps) {
-  const [selectedMarker, setSelectedMarker] = useState<MapMarker | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [showClusterModal, setShowClusterModal] = useState(false);
   const [clusterMarkers, setClusterMarkers] = useState<MapMarker[]>([]);
   const [mapReady, setMapReady] = useState(false);
@@ -201,12 +199,6 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
                   key={index} 
                   position={marker.position}
                   icon={CustomIcon}
-                  eventHandlers={{
-                    click: () => {
-                      setSelectedMarker(marker);
-                      setShowModal(true);
-                    }
-                  }}
                   marker={marker}
                 >
                   <Popup>
@@ -243,16 +235,6 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
                           </div>
                         ) : null}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedMarker(marker);
-                          setShowModal(true);
-                        }}
-                        className="mt-3 w-full bg-[#87B812] text-white px-3 py-1.5 rounded-md hover:bg-[#769f10] transition-colors"
-                      >
-                        View Details
-                      </button>
                     </div>
                   </Popup>
                 </Marker>
@@ -262,7 +244,7 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
         )}
       </MapContainer>
 
-      {/* Modals */}
+      {/* Cluster Modal */}
       {showClusterModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
@@ -280,146 +262,51 @@ export function Map({ center, markers, zoom = 13 }: MapProps) {
               {clusterMarkers.map((marker, index) => (
                 <div 
                   key={index}
-                  className="bg-white border border-gray-200 rounded-lg hover:border-[#87B812] transition-colors cursor-pointer"
-                  onClick={() => {
-                    setSelectedMarker(marker);
-                    setShowClusterModal(false);
-                    setShowModal(true);
-                  }}
+                  className="bg-white border border-gray-200 rounded-lg p-4"
                 >
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-lg">{marker.name}</h3>
-                        <span className="text-sm px-2 py-1 bg-gray-100 rounded-full">
-                          {marker.type}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-semibold text-lg">{marker.name}</h3>
+                      <span className="text-sm px-2 py-1 bg-gray-100 rounded-full">
+                        {marker.type}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 mt-3">
+                    <div className="flex items-center gap-2">
+                      <Battery className={`w-4 h-4 ${getBatteryColor(marker.battery)}`} />
+                      <span className="text-sm text-gray-600">{getBatteryDisplay(marker.battery)}</span>
+                    </div>
+                    {(marker.registrationToken === TagTypes.TEMPERATURE || 
+                      marker.registrationToken === TagTypes.SUPERTAG) && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          {marker.temperature ? `${marker.temperature.toFixed(2)}°F` : ''}
                         </span>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4 mt-3">
+                    )}
+                    {marker.registrationToken === TagTypes.SUPERTAG ? (
                       <div className="flex items-center gap-2">
-                        <Battery className={`w-4 h-4 ${getBatteryColor(marker.battery)}`} />
-                        <span className="text-sm text-gray-600">{getBatteryDisplay(marker.battery)}</span>
+                        <span className="text-sm text-gray-600">
+                          {marker.bleAssets.length} BLE Assets
+                        </span>
                       </div>
-                      {(marker.registrationToken === TagTypes.TEMPERATURE || 
-                        marker.registrationToken === TagTypes.SUPERTAG) && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">
-                            {marker.temperature ? `${marker.temperature.toFixed(2)}°F` : ''}
-                          </span>
-                        </div>
-                      )}
-                      {marker.registrationToken === TagTypes.SUPERTAG ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">
-                            {marker.bleAssets.length} BLE Assets
-                          </span>
-                        </div>
-                      ) : marker.leashedToSuperTag ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">
-                            Connected to: {marker.leashedToSuperTag}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                    
-                    <div className="mt-2 text-sm text-gray-500">
-                      Last Update: {marker.lastUpdate}
-                    </div>
+                    ) : marker.leashedToSuperTag ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Connected to: {marker.leashedToSuperTag}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                  
+                  <div className="mt-2 text-sm text-gray-500">
+                    Last Update: {marker.lastUpdate}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {showModal && selectedMarker && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">{selectedMarker.name}</h2>
-              <button 
-                onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <span className="text-gray-600">Location:</span>{' '}
-                {formatCoordinate(selectedMarker.position[0])}°N, {formatCoordinate(selectedMarker.position[1])}°W
-              </div>
-              <div>
-                <span className="text-gray-600">Last Update:</span> {selectedMarker.lastUpdate}
-              </div>
-              {(selectedMarker.registrationToken === TagTypes.TEMPERATURE || 
-                selectedMarker.registrationToken === TagTypes.SUPERTAG) && (
-                <div>
-                  <span className="text-gray-600">Temperature:</span>{' '}
-                  {selectedMarker.temperature ? `${selectedMarker.temperature.toFixed(2)}°F` : ''}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <span className="text-gray-600">Battery:</span>
-                <Battery className={`w-4 h-4 ${getBatteryColor(selectedMarker.battery)}`} />
-                {getBatteryDisplay(selectedMarker.battery)}
-              </div>
-            </div>
-
-            {selectedMarker.registrationToken === TagTypes.SUPERTAG && (
-              <>
-                <h3 className="text-xl font-semibold mb-4">Leashed BLE Assets ({selectedMarker.bleAssets.length})</h3>
-                <div className="space-y-4">
-                  {selectedMarker.bleAssets.map((asset, idx) => (
-                    <div key={idx} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-3">
-                        {asset.connected ? (
-                          <Wifi className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <WifiOff className="w-5 h-5 text-red-500" />
-                        )}
-                        <span className="font-semibold text-lg">{asset.name}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <div className="flex items-center gap-2">
-                          <Tag className="w-4 h-4 text-gray-500" />
-                          <span>{asset.type}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Status:</span>{' '}
-                          {asset.connected ? 'Connected' : 'Disconnected'}
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Connection Date:</span>{' '}
-                          {asset.connectionDate}
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Leashed Time:</span>{' '}
-                          {asset.leashedTime}
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Last Update:</span>{' '}
-                          {asset.lastUpdate}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Battery className={`w-4 h-4 ${getBatteryColor(asset.battery)}`} />
-                          {getBatteryDisplay(asset.battery)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {selectedMarker.bleAssets.length === 0 && (
-                    <p className="text-gray-500 italic">No BLE assets leashed to this tracker</p>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
