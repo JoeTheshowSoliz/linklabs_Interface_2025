@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowDownUp, AlertTriangle, Battery, Clock, DoorOpen, Thermometer, Wifi, WifiOff } from 'lucide-react';
 import { TagTypes } from '../lib/api';
 import type { ProcessedMarker } from '../types/assets';
+import { formatLocalDateTime, formatRelativeTime } from '../lib/dateUtils';
 
 interface AssetListProps {
   assets: ProcessedMarker[];
@@ -243,7 +244,13 @@ export function AssetList({
 
               <div className="mt-2 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500">{asset.lastUpdate}</span>
+                <span className="text-xs text-gray-500 group-hover/time relative">
+                  {formatRelativeTime(asset.lastUpdate)}
+                  <span className="absolute left-0 -top-6 bg-gray-800 text-white text-xs px-2 py-1 rounded 
+                                opacity-0 group-hover/time:opacity-100 transition-opacity whitespace-nowrap">
+                    {formatLocalDateTime(asset.lastUpdate)}
+                  </span>
+                </span>
               </div>
             </div>
           </div>

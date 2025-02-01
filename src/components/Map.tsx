@@ -4,10 +4,12 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Battery, Wifi, WifiOff, Tag, X, ChevronRight } from 'lucide-react';
+import { Battery, Tag, X, ChevronRight } from 'lucide-react';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import { TagTypes } from '../lib/api';
+import { formatLocalDateTime, formatRelativeTime } from '../lib/dateUtils';
+import type { ProcessedMarker } from '../types/assets';
 
 // Fix Leaflet default icon path issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -71,27 +73,11 @@ const createClusterCustomIcon = function (cluster: any) {
   });
 };
 
-interface MapMarker {
-  position: LatLngTuple;
-  name: string;
-  type: string;
-  temperature: number | null;
-  battery: {
-    status: 'OK' | 'Low';
-    level: number | null;
-  };
-  lastUpdate: string;
-  bleAssets: any[];
-  registrationToken: string;
-  leashedToSuperTag?: string | null;
-  macAddress: string;
-}
-
 interface MapProps {
   center: LatLngTuple;
-  markers: MapMarker[];
+  markers: ProcessedMarker[];
   zoom?: number;
-  selectedAsset?: MapMarker | null;
+  selectedAsset?: ProcessedMarker | null;
 }
 
 const formatCoordinate = (coord: number | undefined | null): string => {
@@ -116,10 +102,10 @@ const isValidPosition = (position: LatLngTuple): boolean => {
 function MapUpdater({ center, zoom, selectedAsset }: { 
   center: LatLngTuple; 
   zoom: number;
-  selectedAsset: MapMarker | null | undefined;
+  selectedAsset: ProcessedMarker | null | undefined;
 }) {
   const map = useMap();
-  const lastUpdate = useRef({ center, zoom, selectedAsset: null as MapMarker | null | undefined });
+  const lastUpdate = useRef({ center, zoom, selectedAsset: null as ProcessedMarker | null | undefined });
 
   useEffect(() => {
     if (!map) return;
@@ -251,8 +237,13 @@ export function Map({ center, markers, zoom = 13, selectedAsset }: MapProps) {
                           <span className="text-gray-600">Location:</span>{' '}
                           {formatCoordinate(marker.position[0])}°N, {formatCoordinate(marker.position[1])}°W
                         </div>
-                        <div>
-                          <span className="text-gray-600">Last Update:</span> {marker.lastUpdate}
+                        <div className="group/time relative">
+                          <span className="text-gray-600">Last Update:</span>{' '}
+                          <span>{formatRelativeTime(marker.lastUpdate)}</span>
+                          <span className="absolute left-0 -top-6 bg-gray-800 text-white text-xs px-2 py-1 rounded 
+                                       opacity-0 group-hover/time:opacity-100 transition-opacity whitespace-nowrap">
+                            {formatLocalDateTime(marker.lastUpdate)}
+                          </span>
                         </div>
                         {(marker.registrationToken === TagTypes.TEMPERATURE || 
                           marker.registrationToken === TagTypes.SUPERTAG) && (

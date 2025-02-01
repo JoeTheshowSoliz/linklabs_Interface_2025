@@ -1,6 +1,8 @@
 import React from 'react';
 import { Wifi, WifiOff, Battery, Clock, Link, Box } from 'lucide-react';
 import { getBatteryInfo } from '../lib/api';
+import { formatLocalDateTime, formatRelativeTime } from '../lib/dateUtils';
+import type { ProcessedMarker } from '../types/assets';
 
 interface BLEAsset {
   name: string;
@@ -14,21 +16,9 @@ interface BLEAsset {
   batteryUsage_uAh?: number | string | null;
 }
 
-interface Asset {
-  name: string;
-  bleAssets: BLEAsset[];
-  registrationToken: string;
-  leashedToSuperTag?: string | null;
-  battery: {
-    status: 'OK' | 'Low';
-    level: number | null;
-  };
-  lastUpdate: string;
-}
-
 interface BLEAssetsListProps {
-  assets: Asset[];
-  selectedAsset: Asset | null;
+  assets: ProcessedMarker[];
+  selectedAsset: ProcessedMarker;
 }
 
 // Helper function to check if a date is within the last 24 hours
@@ -56,10 +46,6 @@ const getBatteryColor = (battery: { status: 'OK' | 'Low'; level: number | null }
 };
 
 export function BLEAssetsList({ assets, selectedAsset }: BLEAssetsListProps) {
-  if (!selectedAsset) {
-    return null;
-  }
-
   // If the selected asset is a sensor, find its parent SuperTag
   if (selectedAsset.leashedToSuperTag) {
     const parentSuperTag = assets.find(asset => asset.name === selectedAsset.leashedToSuperTag);
@@ -106,7 +92,7 @@ export function BLEAssetsList({ assets, selectedAsset }: BLEAssetsListProps) {
                   <span className="font-medium">Last Event</span>
                 </div>
                 <div className="text-gray-900">
-                  {parentSuperTag.lastUpdate}
+                  {formatLocalDateTime(parentSuperTag.lastUpdate)}
                 </div>
               </div>
             </div>
@@ -186,7 +172,13 @@ export function BLEAssetsList({ assets, selectedAsset }: BLEAssetsListProps) {
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-600">Last Event:</span>
-                    <span className="text-sm">{asset.lastEventTime}</span>
+                    <span className="text-sm group-hover/time relative">
+                      {formatRelativeTime(asset.lastEventTime)}
+                      <span className="absolute left-0 -top-6 bg-gray-800 text-white text-xs px-2 py-1 rounded 
+                                  opacity-0 group-hover/time:opacity-100 transition-opacity whitespace-nowrap">
+                        {formatLocalDateTime(asset.lastEventTime)}
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
